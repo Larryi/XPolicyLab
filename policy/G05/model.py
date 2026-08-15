@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import collections
 import inspect
+import json
 import os
 import sys
+import time
 from pathlib import Path
 from typing import Any
 
@@ -48,6 +50,15 @@ class Model(ModelTemplate):
                 or os.environ.get("ROBODOJO_G05_INFERENCE_BATCH_SIZE", "8")
             ),
         )
+        self.retain_cot_text = str(
+            model_cfg.get("retain_cot_text", os.environ.get("ROBODOJO_G05_RETAIN_COT", "0"))
+        ).lower() in {"1", "true", "yes", "on"}
+        self.cot_log_path = model_cfg.get("cot_log_path") or os.environ.get("ROBODOJO_G05_COT_LOG")
+        self._cot_log_file = None
+        if self.retain_cot_text and self.cot_log_path:
+            cot_path = Path(str(self.cot_log_path)).expanduser()
+            cot_path.parent.mkdir(parents=True, exist_ok=True)
+            self._cot_log_file = cot_path
 
         self.robot_action_dim_info = self._resolve_robot_action_dim_info()
         self.batch_size = self._resolve_batch_size()
@@ -292,7 +303,10 @@ class Model(ModelTemplate):
         actions = []
         for start in range(0, len(obs_dicts), batch_size):
             actions.extend(self.inferencer.infer(obs_dicts[start : start + batch_size]))
-        return [self._format_action_chunk(action) for action in actions]
+        return [
+            self._format_action_chunk(action, env_key=env_keys[i])
+            for i, action in enumerate(actions)
+        ]
 
     def _explicit_history_buffers_from_obs(
         self, obs: dict[str, Any], current_raw_obs: dict[str, Any]
@@ -403,7 +417,18 @@ class Model(ModelTemplate):
 
         return entry["frames"], entry["states"]
 
-    def _format_action_chunk(self, action) -> list[dict[str, np.ndarray]]:
+    def _format_action_chunk(self, action, env_key=None) -> list[dict[str, np.ndarray]]:
+        # G0.5 returns auxiliary CoT fields alongside action chunks.  Keep the
+        # old action-only wire format by default, but make Subtask/Trace/etc.
+        # observable for debugging when explicitly enabled.
+        cot_text = action.get("_cot_text") if isinstance(action, dict) else None
+        if self.retain_cot_text and cot_text is not None and self._cot_log_file:
+            with self._cot_log_file.open("a", encoding="utf-8") as handle:
+                handle.write(json.dumps({
+                    "time": time.time(),
+                    "env_key": str(env_key),
+                    "cot_text": cot_text,
+                }, ensure_ascii=False) + "\n")
         action.pop("_cot_text", None)
         action.pop("_absent_keys", None)
 

@@ -21,3 +21,5 @@ frequency: 30
 # The launcher passes action_source=ar or action_source=fm.  The adapter derives
 # matching Hydra flags from that value so one deploy file safely serves both.
 hydra_overrides: []
+retain_cot_text: false
+cot_log_path: null

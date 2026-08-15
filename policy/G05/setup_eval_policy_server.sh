@@ -118,4 +118,6 @@ exec env \
       action_type="${action_type}" \
       action_dim="${action_dim}" \
       ckpt_path="${ckpt_path}" \
-      g05_root="${G05_ROOT}"
+      g05_root="${G05_ROOT}" \
+      retain_cot_text="${ROBODOJO_G05_RETAIN_COT:-0}" \
+      cot_log_path="${ROBODOJO_G05_COT_LOG:-}"

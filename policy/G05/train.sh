@@ -21,6 +21,9 @@ OUTPUT_ROOT="${G05_OUTPUT_ROOT:-${SCRIPT_DIR}/checkpoints}"
 export G05_OUTPUT_DIR="${G05_OUTPUT_DIR:-${OUTPUT_ROOT}}"
 export EXP_NAME="${EXP_NAME:-${bench_name}-${ckpt_name}-${env_cfg_type}-${action_type}-${seed}}"
 export PYTHON_BIN
+export G05_TRAIN_MODE="${G05_TRAIN_MODE:-ar_fm}"
+export G05_SIDECAR_JSONL="${G05_SIDECAR_JSONL:-}"
+export G05_RESUME="${G05_RESUME:-}"
 
 if [[ -z "${G05_ROOT}" ]]; then
   echo "Set G05_ROOT to a G05 checkout before launching training." >&2
@@ -94,7 +97,11 @@ if [[ -x scripts/run/finetune_benchmark.sh ]]; then
     "seed=${seed}"
     "model.batch_size=${G05_BATCH_SIZE:-8}"
     "model.grad_accumulation_steps=${G05_GRAD_ACCUM:-1}"
+    "data.subgoal_sidecar=${G05_SIDECAR_JSONL}"
+    "data.preserve_global_task=true"
+    "data.action_chunk_boundary=segment"
   )
+  [[ -n "${G05_RESUME}" ]] && args+=("checkpoint.resume=${G05_RESUME}")
   if [[ -n "${G05_GLOBAL_BATCH_SIZE:-}" ]]; then
     args+=("trainer.global_batch_size=${G05_GLOBAL_BATCH_SIZE}")
   fi
@@ -102,6 +109,8 @@ if [[ -x scripts/run/finetune_benchmark.sh ]]; then
 fi
 
 TASK_CONFIG="${G05_TASK_CONFIG:-robodojo_arx_x5_joint}"
+resume_args=()
+[[ -n "${G05_RESUME}" ]] && resume_args+=("checkpoint.resume=${G05_RESUME}")
 exec bash scripts/run/finetune.sh \
   "${num_gpus}" \
   "${TASK_CONFIG}" \
@@ -110,4 +119,8 @@ exec bash scripts/run/finetune.sh \
   "logger.project=${WANDB_PROJECT}" \
   "model.batch_size=${G05_BATCH_SIZE:-8}" \
   "model.grad_accumulation_steps=${G05_GRAD_ACCUM:-1}" \
+  "data.subgoal_sidecar=${G05_SIDECAR_JSONL}" \
+  "data.preserve_global_task=true" \
+  "data.action_chunk_boundary=segment" \
+  "${resume_args[@]}" \
   "$@"
