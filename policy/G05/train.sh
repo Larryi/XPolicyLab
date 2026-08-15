@@ -108,9 +108,12 @@ if [[ -x scripts/run/finetune_benchmark.sh ]]; then
   exec bash scripts/run/finetune_benchmark.sh "${args[@]}" "$@"
 fi
 
-TASK_CONFIG="${G05_TASK_CONFIG:-robodojo_arx_x5_joint}"
+TASK_CONFIG="${G05_TASK_CONFIG:-real/g0plus_xpolicylab_finetune}"
 resume_args=()
 [[ -n "${G05_RESUME}" ]] && resume_args+=("checkpoint.resume=${G05_RESUME}")
+init_args=()
+[[ -n "${G05_INIT_CKPT:-}" ]] && init_args+=("model.pretrained_ckpt=${G05_INIT_CKPT}")
+dataset_args=("data.dataset.dataset_dirs=[${ROBODOJO_LEROBOT_V30_ROOT}]")
 exec bash scripts/run/finetune.sh \
   "${num_gpus}" \
   "${TASK_CONFIG}" \
@@ -122,5 +125,8 @@ exec bash scripts/run/finetune.sh \
   "data.subgoal_sidecar=${G05_SIDECAR_JSONL}" \
   "data.preserve_global_task=true" \
   "data.action_chunk_boundary=segment" \
+  "checkpointing_steps=${G05_SAVE_INTERVAL_STEPS:-2000}" \
+  "${dataset_args[@]}" \
+  "${init_args[@]}" \
   "${resume_args[@]}" \
   "$@"

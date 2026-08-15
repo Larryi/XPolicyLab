@@ -1,3 +1,6 @@
+import json
+from pathlib import Path
+
 import torch
 import numpy as np
 from typing import List, Literal, Dict, Optional, Any, DefaultDict
@@ -9,6 +12,14 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from galaxea_fm.data.base_lerobot_dataset import BaseLerobotDataset
 
 logger = get_logger(__name__)
+
+
+def _scalar_int(value):
+    if value is None:
+        return None
+    if hasattr(value, "item"):
+        value = value.item()
+    return int(value)
 
 
 class GalaxeaLerobotDataset(BaseLerobotDataset):
@@ -33,6 +44,10 @@ class GalaxeaLerobotDataset(BaseLerobotDataset):
         # lerobot_dataset version
         lerobot_ds_version: Optional[Literal["2.1", "3.0"]] = "2.1",
         video_backend: Optional[str] = "pyav",
+        subgoal_manifest: Optional[str] = None,
+        balanced_manifest: Optional[str] = None,
+        preserve_global_task: bool = True,
+        action_chunk_boundary: Optional[str] = None,
         **kwargs
     ):
         super().__init__(
@@ -48,6 +63,13 @@ class GalaxeaLerobotDataset(BaseLerobotDataset):
         )
 
         self.ee_start_moving_thresh = ee_start_moving_thresh
+        self.preserve_global_task = preserve_global_task
+        self.action_chunk_boundary = action_chunk_boundary
+        self._sidecar_rows = {}
+        self._manifest_global_indices = None
+        manifest_path = balanced_manifest if is_training_set and balanced_manifest else subgoal_manifest
+        if manifest_path:
+            self._load_subgoal_manifest(Path(manifest_path))
         if self.ee_start_moving_thresh > 1e-6:
             self.ee_pose_action_meta = [meta for meta in self.action_meta if "ee_pose" in meta["key"]]
             assert len(self.ee_pose_action_meta) > 0, "ee_start_moving_thresh is set but ee_pose is not in action_meta"
@@ -144,6 +166,8 @@ class GalaxeaLerobotDataset(BaseLerobotDataset):
         return original_idx.item()
 
     def __len__(self):
+        if self._manifest_global_indices is not None:
+            return len(self._manifest_global_indices)
         if 'from_moving_step' in self.episode_data_index:
             return self.dataset_len
         else:
@@ -153,12 +177,57 @@ class GalaxeaLerobotDataset(BaseLerobotDataset):
         # `coarse_task` (high-level instruction) is a Galaxea-internal column and
         # is absent in externally-converted datasets (e.g. RoboDojo). Fall back to
         # the per-frame task; it is dropped anyway when drop_high_level_prob=1.0.
-        sample["coarse_task"] = lerobot_sample.get("coarse_task", lerobot_sample.get("task", ""))
+        global_task = lerobot_sample.get("coarse_task", lerobot_sample.get("task", ""))
+        sample["coarse_task"] = global_task
+        if self._sidecar_rows:
+            episode_index = _scalar_int(lerobot_sample.get("episode_index"))
+            frame_index = _scalar_int(lerobot_sample.get("frame_index"))
+            row = self._sidecar_rows.get((episode_index, frame_index))
+            if row:
+                if self.preserve_global_task:
+                    sample["coarse_task"] = row["task"]
+                sample["task"] = row["subtask"]
+                if self.action_chunk_boundary == "segment":
+                    horizon = max(0, min(int(row["action_horizon"]), sample["action_is_pad"].shape[0]))
+                    sample["action_is_pad"] = sample["action_is_pad"].clone()
+                    sample["action_is_pad"][horizon:] = True
         return sample
+
+    def _load_subgoal_manifest(self, path: Path):
+        if not path.is_file():
+            raise FileNotFoundError(f"G0.5 subgoal manifest not found: {path}")
+        rows = []
+        with path.open(encoding="utf-8") as handle:
+            for line in handle:
+                row = json.loads(line)
+                if "episode_index" in row and "frame_index" in row:
+                    rows.append(row)
+        episode_count = len(self.episode_data_index["from"])
+        train_cutoff = int(episode_count * (1.0 - self.val_set_proportion))
+        selected = []
+        for source_row in rows:
+            row = dict(source_row)
+            episode = int(row["episode_index"])
+            frame = int(row["frame_index"])
+            if episode < 0 or episode >= episode_count:
+                continue
+            if (episode < train_cutoff) != self.is_training_set:
+                continue
+            row["episode_index"] = episode
+            row["frame_index"] = frame
+            self._sidecar_rows[(episode, frame)] = row
+            selected.append(int(self.episode_data_index["from"][episode]) + frame)
+        if not selected:
+            split = "training" if self.is_training_set else "validation"
+            raise RuntimeError(f"No {split} samples in {path}")
+        self._manifest_global_indices = selected
+        logger.info("Loaded G0.5 subgoal manifest %s: %d samples", path, len(selected))
 
     def __getitem__(self, idx):
         if idx >= len(self):
             raise IndexError(f"Index {idx} out of bounds.")
+        if self._manifest_global_indices is not None:
+            return super().__getitem__(self._manifest_global_indices[idx])
         original_idx = self.get_original_index(idx)
         return super().__getitem__(original_idx)
     

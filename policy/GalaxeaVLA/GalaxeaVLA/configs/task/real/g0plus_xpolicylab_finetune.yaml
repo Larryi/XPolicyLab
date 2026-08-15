@@ -15,3 +15,10 @@ data:
   dataset:
     lerobot_ds_version: "3.0"
     dataset_dirs: null
+    subgoal_manifest: ${oc.env:G05_SUBGOAL_MANIFEST,null}
+    balanced_manifest: ${oc.env:G05_BALANCED_MANIFEST,null}
+    preserve_global_task: true
+    action_chunk_boundary: segment
+  processor:
+    # Emit both the global Task and the per-frame Subtask in the prompt.
+    drop_high_level_prob: 0.0
