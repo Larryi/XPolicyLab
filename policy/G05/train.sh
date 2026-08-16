@@ -97,9 +97,10 @@ if [[ -x scripts/run/finetune_benchmark.sh ]]; then
     "seed=${seed}"
     "model.batch_size=${G05_BATCH_SIZE:-8}"
     "model.grad_accumulation_steps=${G05_GRAD_ACCUM:-1}"
-    "data.subgoal_sidecar=${G05_SIDECAR_JSONL}"
-    "data.preserve_global_task=true"
-    "data.action_chunk_boundary=segment"
+    "data.dataset.subgoal_manifest=${G05_SUBGOAL_MANIFEST:-${G05_SIDECAR_JSONL}}"
+    "data.dataset.balanced_manifest=${G05_BALANCED_MANIFEST:-}"
+    "data.dataset.preserve_global_task=true"
+    "data.dataset.action_chunk_boundary=segment"
   )
   [[ -n "${G05_RESUME}" ]] && args+=("checkpoint.resume=${G05_RESUME}")
   if [[ -n "${G05_GLOBAL_BATCH_SIZE:-}" ]]; then
@@ -122,9 +123,10 @@ exec bash scripts/run/finetune.sh \
   "logger.project=${WANDB_PROJECT}" \
   "model.batch_size=${G05_BATCH_SIZE:-8}" \
   "model.grad_accumulation_steps=${G05_GRAD_ACCUM:-1}" \
-  "data.subgoal_sidecar=${G05_SIDECAR_JSONL}" \
-  "data.preserve_global_task=true" \
-  "data.action_chunk_boundary=segment" \
+  "data.dataset.subgoal_manifest=${G05_SUBGOAL_MANIFEST:-${G05_SIDECAR_JSONL}}" \
+  "data.dataset.balanced_manifest=${G05_BALANCED_MANIFEST:-}" \
+  "data.dataset.preserve_global_task=true" \
+  "data.dataset.action_chunk_boundary=segment" \
   "checkpointing_steps=${G05_SAVE_INTERVAL_STEPS:-2000}" \
   "${dataset_args[@]}" \
   "${init_args[@]}" \
