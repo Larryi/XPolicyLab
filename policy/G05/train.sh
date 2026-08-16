@@ -111,7 +111,7 @@ fi
 
 TASK_CONFIG="${G05_TASK_CONFIG:-robodojo_g05}"
 resume_args=()
-[[ -n "${G05_RESUME}" ]] && resume_args+=("checkpoint.resume=${G05_RESUME}")
+[[ -n "${G05_RESUME}" ]] && resume_args+=("resume_ckpt=${G05_RESUME}")
 init_args=()
 [[ -n "${G05_INIT_CKPT:-}" ]] && init_args+=("model.pretrained_ckpt=${G05_INIT_CKPT}")
 dataset_args=()
@@ -130,8 +130,8 @@ exec bash scripts/run/finetune.sh \
   "seed=${seed}" \
   "logger.mode=${G05_LOGGER_MODE:-online}" \
   "logger.project=${WANDB_PROJECT}" \
-  "model.batch_size=${G05_BATCH_SIZE:-8}" \
-  "model.grad_accumulation_steps=${G05_GRAD_ACCUM:-1}" \
+  "batch_size=${G05_BATCH_SIZE:-8}" \
+  "grad_accumulation_steps=${G05_GRAD_ACCUM:-1}" \
   "checkpointing_steps=${G05_SAVE_INTERVAL_STEPS:-2000}" \
   "${dataset_args[@]}" \
   "${sidecar_args[@]}" \
