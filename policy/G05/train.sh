@@ -130,8 +130,8 @@ exec bash scripts/run/finetune.sh \
   "seed=${seed}" \
   "logger.mode=${G05_LOGGER_MODE:-online}" \
   "logger.project=${WANDB_PROJECT}" \
-  "batch_size=${G05_BATCH_SIZE:-8}" \
-  "grad_accumulation_steps=${G05_GRAD_ACCUM:-1}" \
+  "model.batch_size=${G05_BATCH_SIZE:-8}" \
+  "model.grad_accumulation_steps=${G05_GRAD_ACCUM:-1}" \
   "checkpointing_steps=${G05_SAVE_INTERVAL_STEPS:-2000}" \
   "${dataset_args[@]}" \
   "${sidecar_args[@]}" \
