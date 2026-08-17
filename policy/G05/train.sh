@@ -97,10 +97,10 @@ if [[ -x scripts/run/finetune_benchmark.sh ]]; then
     "seed=${seed}"
     "model.batch_size=${G05_BATCH_SIZE:-8}"
     "model.grad_accumulation_steps=${G05_GRAD_ACCUM:-1}"
-    "data.dataset.subgoal_manifest=${G05_SUBGOAL_MANIFEST:-${G05_SIDECAR_JSONL}}"
-    "data.dataset.balanced_manifest=${G05_BALANCED_MANIFEST:-}"
-    "data.dataset.preserve_global_task=true"
-    "data.dataset.action_chunk_boundary=segment"
+    "+data.embodiment_datasets.robodojo.subgoal_manifest=${G05_SUBGOAL_MANIFEST:-${G05_SIDECAR_JSONL}}"
+    "+data.embodiment_datasets.robodojo.balanced_manifest=${G05_BALANCED_MANIFEST:-}"
+    "+data.embodiment_datasets.robodojo.preserve_global_task=true"
+    "+data.embodiment_datasets.robodojo.action_chunk_boundary=segment"
   )
   [[ -n "${G05_RESUME}" ]] && args+=("checkpoint.resume=${G05_RESUME}")
   if [[ -n "${G05_GLOBAL_BATCH_SIZE:-}" ]]; then
@@ -118,10 +118,10 @@ dataset_args=()
 sidecar_args=()
 if [[ "${G05_USE_SIDECAR:-0}" == "1" ]]; then
   sidecar_args=(
-    "data.dataset.subgoal_manifest=${G05_SUBGOAL_MANIFEST:-${G05_SIDECAR_JSONL}}"
-    "data.dataset.balanced_manifest=${G05_BALANCED_MANIFEST:-}"
-    "data.dataset.preserve_global_task=true"
-    "data.dataset.action_chunk_boundary=segment"
+    "+data.embodiment_datasets.robodojo.subgoal_manifest=${G05_SUBGOAL_MANIFEST:-${G05_SIDECAR_JSONL}}"
+    "+data.embodiment_datasets.robodojo.balanced_manifest=${G05_BALANCED_MANIFEST:-}"
+    "+data.embodiment_datasets.robodojo.preserve_global_task=true"
+    "+data.embodiment_datasets.robodojo.action_chunk_boundary=segment"
   )
 fi
 exec bash scripts/run/finetune.sh \
