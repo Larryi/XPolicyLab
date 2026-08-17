@@ -97,6 +97,7 @@ if [[ -x scripts/run/finetune_benchmark.sh ]]; then
     "seed=${seed}"
     "model.batch_size=${G05_BATCH_SIZE:-8}"
     "model.grad_accumulation_steps=${G05_GRAD_ACCUM:-1}"
+    "data.embodiment_datasets.robodojo.type=g05.data.galaxea_lerobot_dataset.GalaxeaLerobotDataset"
     "+data.embodiment_datasets.robodojo.subgoal_manifest=${G05_SUBGOAL_MANIFEST:-${G05_SIDECAR_JSONL}}"
     "+data.embodiment_datasets.robodojo.balanced_manifest=${G05_BALANCED_MANIFEST:-}"
     "+data.embodiment_datasets.robodojo.preserve_global_task=true"
@@ -118,6 +119,7 @@ dataset_args=()
 sidecar_args=()
 if [[ "${G05_USE_SIDECAR:-0}" == "1" ]]; then
   sidecar_args=(
+    "data.embodiment_datasets.robodojo.type=g05.data.galaxea_lerobot_dataset.GalaxeaLerobotDataset"
     "+data.embodiment_datasets.robodojo.subgoal_manifest=${G05_SUBGOAL_MANIFEST:-${G05_SIDECAR_JSONL}}"
     "+data.embodiment_datasets.robodojo.balanced_manifest=${G05_BALANCED_MANIFEST:-}"
     "+data.embodiment_datasets.robodojo.preserve_global_task=true"
